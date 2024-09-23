@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Index</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+
+<header>
+    <div id="user-name">Pozdrav, <span id="ime"></span></div>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Team</a>
+        <a href="#">Chat</a>
+        <a href="#">Profile</a>
+    </nav>
+</header>
+
+<div class="container">
+    <div class="icon-section">
+        <div class="icon" id="dolar-icon">
+            <span class="material-icons">attach_money</span>
+            <span class="amount" id="amount">0.00</span>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, where, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBKfTE0qZdxVLq0lvmli367_yyqpGK-fPA",
+        authDomain: "piii-7844e.firebaseapp.com",
+        projectId: "piii-7844e",
+        storageBucket: "piii-7844e.appspot.com",
+        messagingSenderId: "315770496799",
+        appId: "1:315770496799:web:0197d4baf2c8731d88722a",
+        measurementId: "G-JH9SDWTS9V"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let userId = ""; // Varijabla za korisnički ID
+let username = ""; // Varijabla za korisničko ime
+
+// Funkcija za dobijanje parametara iz URL-a
+function getQueryParams() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+        ime: params.get('ime'),
+        prezime: params.get('prezime'),
+        username: params.get('username')
+    };
+}
+
+// U funkciji login možete dobiti korisničko ime iz URL-a
+const { username: userParam } = getQueryParams(); // Dobijanje username iz URL-a
+
+async function loadUserId() {
+    const userCollection = collection(db, 'network');
+    const q = query(userCollection, where("username", "==", userParam)); // Koristimo username za pretragu
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+        querySnapshot.forEach(doc => {
+            userId = doc.id; // Dobijanje ID-a korisnika
+            const userData = doc.data();
+            document.getElementById('ime').innerText = userData.ime; // Prikazivanje imena korisnika
+            loadUserData(); // Pozivamo funkciju za učitavanje podataka nakon što imamo ID
+        });
+    } else {
+        console.error("Korisnik ne postoji u Firestore-u.");
+    }
+}
+
+async function loadUserData() {
+    const docRef = doc(db, 'network', userId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+        let amount = docSnap.data().amount || 0.00;
+        let clickCount = docSnap.data().clickCount || 0;
+        document.getElementById('amount').innerText = amount.toFixed(2);
+        document.getElementById('dolar-icon').addEventListener('click', async () => {
+            if (clickCount < 5) {
+                amount += 0.1;
+                clickCount++;
+                document.getElementById('amount').innerText = amount.toFixed(2);
+                await updateFirestore(amount, clickCount);
+            } else {
+                alert("Maksimalno 5 klikova dnevno!");
+            }
+        });
+    } else {
+        console.error("Korisnik ne postoji u Firestore-u.");
+    }
+}
+
+async function updateFirestore(amount, clickCount) {
+    const docRef = doc(db, 'network', userId);
+    try {
+        await updateDoc(docRef, {
+            amount: amount,
+            clickCount: clickCount
+        });
+        console.log("Podaci uspešno ažurirani.");
+    } catch (error) {
+        console.error("Greška prilikom ažuriranja podataka: ", error);
+    }
+}
+
+// Kada se stranica učita, pozovite loadUserId
+window.onload = () => {
+    loadUserId();
+};
+
+</script>
+
+</body>
+</html> 
+
+
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+    header {
+        background-color: #6a5acd; /* Ljubičasta boja */
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+    }
+    nav {
+        display: flex;
+        gap: 20px;
+    }
+    .container {
+        display: flex;
+        background-color: #f0f0f0; /* Sivi pozadinski boja */
+        padding: 20px;
+    }
+    .image-section {
+        flex: 1;
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+    }
+    .image-section img {
+        width: 100px; /* Prilagodi širinu slike */
+        margin-right: 20px;
+    }
+    .icon-section {
+        flex: 2;
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 20px;
+    }
+    .icon {
+        background-color: white;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
+        cursor: pointer;
+    }
+    .amount {
+        font-size: 24px;
+        margin-left: 10px;
+    }
+</style>
